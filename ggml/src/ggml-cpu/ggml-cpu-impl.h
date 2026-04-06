@@ -319,6 +319,15 @@ inline static int32x4_t ggml_vdotq_s32(int32x4_t acc, int8x16_t a, int8x16_t b) 
 
 #endif // !defined(__ARM_FEATURE_DOTPROD)
 
+static inline int32x4_t ggml_nvfp4_dot8(const int8x8_t q4_lo, const int8x8_t q8_lo,
+                                         const int8x8_t q4_hi, const int8x8_t q8_hi) {
+    const int16x8_t p_lo = vmull_s8(q4_lo, q8_lo);
+    const int16x8_t p_hi = vmull_s8(q4_hi, q8_hi);
+    const int32x4_t sum_lo = vpaddlq_s16(p_lo);
+    const int32x4_t sum_hi = vpaddlq_s16(p_hi);
+    return vaddq_s32(sum_lo, sum_hi);
+}
+
 #endif // defined(__ARM_NEON)
 
 #ifdef __wasm_simd128__
