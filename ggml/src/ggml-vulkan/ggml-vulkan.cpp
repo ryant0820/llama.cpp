@@ -40,6 +40,11 @@ DispatchLoaderDynamic & ggml_vk_default_dispatcher();
 #include <future>
 #include <thread>
 
+#if !defined(_WIN32)
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #if defined(_MSC_VER)
 # define NOMINMAX 1
 # include <windows.h>
@@ -14048,13 +14053,35 @@ static bool ggml_backend_vk_cpy_tensor_async(ggml_backend_t backend_src, ggml_ba
                                sync_fd, (void *)(VkSemaphore)dst_sem->s,
                                ctx->binary_semaphore_idx);
 
+                // Verify fd is valid before import
+#if !defined(_WIN32)
+                {
+                    int fd_flags = fcntl(sync_fd, F_GETFL);
+                    GGML_LOG_DEBUG("ggml_vulkan: pre-import fd check: fd=%d fcntl(F_GETFL)=%d errno=%d\n",
+                                   sync_fd, fd_flags, fd_flags == -1 ? errno : 0);
+                }
+#endif
+
                 vk::ImportSemaphoreFdInfoKHR import_info{
                     dst_sem->s,
                     vk::SemaphoreImportFlagBits::eTemporary,
                     vk::ExternalSemaphoreHandleTypeFlagBits::eSyncFd,
                     sync_fd
                 };
-                dst_dev->device.importSemaphoreFdKHR(import_info);
+
+                vk::Result import_result = dst_dev->device.importSemaphoreFdKHR(
+                    &import_info, VULKAN_HPP_DEFAULT_DISPATCHER);
+                if (import_result != vk::Result::eSuccess) {
+                    GGML_LOG_ERROR("ggml_vulkan: importSemaphoreFdKHR FAILED: result=%d fd=%d "
+                                   "dst_sem=%p src_dev=%s dst_dev=%s\n",
+                                   (int)import_result, sync_fd,
+                                   (void *)(VkSemaphore)dst_sem->s,
+                                   src_dev->name.c_str(), dst_dev->name.c_str());
+#if !defined(_WIN32)
+                    close(sync_fd);
+#endif
+                    return false;
+                }
 
                 GGML_LOG_DEBUG("ggml_vulkan: cross-device import succeeded\n");
 
