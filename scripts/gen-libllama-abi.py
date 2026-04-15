@@ -152,7 +152,13 @@ def extract_signatures(header_text: str) -> list[str]:
         if sig and '(' in sig:
             sigs.append(sig)
 
-    sigs.sort(key=lambda s: re.search(r'\b(llama_\w+)\s*\(', s).group(1) if re.search(r'\b(llama_\w+)\s*\(', s) else s)
+    _name_re = re.compile(r'\b(llama_\w+)\s*\(')
+
+    def _sort_key(s: str) -> str:
+        m = _name_re.search(s)
+        return m.group(1) if m else s
+
+    sigs.sort(key=_sort_key)
     return sigs
 
 
