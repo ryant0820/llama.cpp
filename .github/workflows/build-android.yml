@@ -95,3 +95,4 @@ jobs:
           name: llama-cpp-android-${{ matrix.build }}
           path: pkg-adb/llama.cpp
 # Rebuild trigger Monday, April 20, 2026 AM02:01:48 HKT
+# rebuild trigger 1776622082
