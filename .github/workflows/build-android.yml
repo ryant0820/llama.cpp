@@ -71,9 +71,7 @@ jobs:
       matrix:
         include:
           - build: 'arm64-cpu'
-            defines: '-D ANDROID_ABI=arm64-v8a -D ANDROID_PLATFORM=android-31 -D CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake -D GGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8.2-a -DGGML_CPU_ARM_DOTPROD=OFF -DGGML_CPU_ARM_I8MM=OFF -DGGML_FLASH_ATTENTION=OFF -G Ninja -D LLAMA_OPENSSL=OFF -D GGML_OPENMP=OFF'
-          - build: 'arm64-snapdragon'
-            defines: '--preset arm64-android-snapdragon-release'
+            defines: '-D ANDROID_ABI=arm64-v8a -D ANDROID_PLATFORM=android-31 -D CMAKE_TOOLCHAIN_FILE=${ANDROID_NDK_ROOT}/build/cmake/android.toolchain.cmake -D GGML_NATIVE=OFF -DGGML_CPU_ARM_ARCH=armv8.2-a -DGGML_CPU_ARM_DOTPROD=OFF -DGGML_CPU_ARM_I8MM=OFF -DGGML_FLASH_ATTENTION=OFF -DCMAKE_BUILD_TYPE=Debug -D LLAMA_OPENSSL=OFF -D GGML_OPENMP=OFF -D CMAKE_C_FLAGS="-O2 -fno-optimize-strlen" -D CMAKE_CXX_FLAGS="-O2 -fno-optimize-strlen"'
 
     steps:
       - name: Clone
@@ -83,12 +81,15 @@ jobs:
           fetch-depth: 0
           lfs: false
 
+      - name: Revert speculative bypass patch (keep only ARM flags)
+        run: |
+          cd /home/user/repo
+          git revert --no-commit HEAD~2..HEAD || true
+          git diff --stat
+
       - name: Build Llama.CPP for Hexagon Android
         id: build_llama_cpp_hexagon_android
         run: |
-          if [[ "${{ matrix.build }}" == "arm64-snapdragon" ]]; then
-            cp docs/backend/snapdragon/CMakeUserPresets.json .
-          fi
           cmake ${{ matrix.defines }} -B build
           cmake --build build
           cmake --install build --prefix pkg-adb/llama.cpp
