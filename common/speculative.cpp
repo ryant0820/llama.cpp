@@ -917,6 +917,9 @@ common_speculative_compat_type common_speculative_is_compat(llama_context * ctx_
     if (mem == nullptr) {
         return COMMON_SPECULATIVE_COMPAT_TYPE_NO;
     }
+    // bypass decode check for ARM64 Android (Snapdragon 835) compatibility
+    LOG_WRN("%s: bypass speculative compat check for Android ARM64\n", __func__);
+    return COMMON_SPECULATIVE_COMPAT_TYPE_NO;
 
     common_speculative_compat_type res = COMMON_SPECULATIVE_COMPAT_TYPE_FULL;
 
